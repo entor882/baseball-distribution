@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ブルペン投球マップ</title>
+
+<style>
+body{
+    text-align:center;
+    font-family:Arial;
+}
+
+canvas{
+    border:2px solid black;
+    background:#f8f8f8;
+}
+
+.controls{
+    margin:15px;
+}
+
+button{
+    margin:5px;
+    padding:8px 15px;
+}
+.layout{
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    gap:20px;
+}
+
+.pitch-list{
+    display:flex;
+    flex-direction:column;
+    width:180px;
+}
+
+.pitchBtn{
+    margin:3px;
+    padding:10px;
+    cursor:pointer;
+}
+
+.selected{
+    background:red;
+    color:white;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>ブルペン投球マップ</h1>
+
+<div class="controls">
+    <button onclick="saveCSV()">CSV保存</button>
+    <button onclick="saveImage()">画像保存</button>
+
+<div class="layout">
+
+    <div class="pitch-list">
+
+        <button class="pitchBtn" data-pitch="ストレート">ストレート</button>
+        <button class="pitchBtn" data-pitch="ツーシーム">ツーシーム</button>
+        <button class="pitchBtn" data-pitch="カットボール">カット</button>
+
+        <button class="pitchBtn" data-pitch="横スライダー">横スライダー</button>
+        <button class="pitchBtn" data-pitch="縦スライダー">縦スライダー</button>
+
+        <button class="pitchBtn" data-pitch="縦カーブ">縦カーブ</button>
+        <button class="pitchBtn" data-pitch="横カーブ">横カーブ</button>
+
+        <button class="pitchBtn" data-pitch="フォーク">フォーク</button>
+        <button class="pitchBtn" data-pitch="スプリット">スプリット</button>
+        <button class="pitchBtn" data-pitch="チェンジアップ">チェンジアップ</button>
+        <button class="pitchBtn" data-pitch="シンカー">シンカー</button>
+        <button class="pitchBtn" data-pitch="シュート">シュート</button>
+        <button class="pitchBtn" data-pitch="ナックルカーブ">ナックルカーブ</button>
+        <button class="pitchBtn" data-pitch="パワーカーブ">パワーカーブ</button>
+        <button class="pitchBtn" data-pitch="スラーブ">スラーブ</button>
+        <button class="pitchBtn" data-pitch="ナックル">ナックル </button>
+
+    </div>
+
+    <canvas id="zone" width="500" height="500"></canvas>
+
+</div>
+
+
+<button onclick="clearMap()">リセット</button>
+
+</div>
+
+<h3>球種別投球数</h3>
+<div id="stats"></div>
+
+<h3>投球割合</h3>
+<canvas id="pieChart" width="300" height="300"></canvas>
+
+<script>
+function saveCSV(){
+
+    if(pitches.length === 0){
+        alert("投球データがありません");
+        return;
+    }
+
+    let csv = "投球番号,球種,X座標,Y座標\n";
+
+    pitches.forEach((p,index)=>{
+        csv += `${index+1},${p.type},${Math.round(p.x)},${Math.round(p.y)}\n`;
+    });
+
+    const blob = new Blob(
+        ["\uFEFF" + csv],
+        {type:"text/csv;charset=utf-8;"}
+    );
+
+    const link = document.createElement("a");
+
+    const date = new Date();
+
+    const fileName =
+        `bullpen_${date.getFullYear()}-${
+        String(date.getMonth()+1).padStart(2,"0")}-${
+        String(date.getDate()).padStart(2,"0")}-${
+        String(date.getHours()).padStart(2,"0")}-${
+        String(date.getMinutes()).padStart(2,"0")}.csv`;
+
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+function saveImage(){
+
+    const link = document.createElement("a");
+
+    const date = new Date();
+
+    const fileName =
+        `bullpen_${
+        date.getFullYear()}-${
+        String(date.getMonth()+1).padStart(2,"0")}-${
+        String(date.getDate()).padStart(2,"0")}-${
+        String(date.getHours()).padStart(2,"0")}-${
+        String(date.getMinutes()).padStart(2,"0")}.png`;
+
+    link.download = fileName;
+
+    link.href = canvas.toDataURL("image/png");
+
+    link.click();
+}
+
+const canvas = document.getElementById("zone");
+const ctx = canvas.getContext("2d");
+
+const pitches = [];
+
+let selectedPitch = "ストレート";
+
+document.querySelectorAll(".pitchBtn")
+.forEach(btn=>{
+
+    btn.addEventListener("click",()=>{
+
+        selectedPitch = btn.dataset.pitch;
+
+        document
+        .querySelectorAll(".pitchBtn")
+        .forEach(b=>b.classList.remove("selected"));
+
+        btn.classList.add("selected");
+    });
+
+});
+
+const colors = {
+    "ストレート":"red",
+    "ツーシーム":"darkred",
+    "カットボール":"brown",
+
+    "縦スライダー":"blue",
+    "横スライダー":"deepskyblue",
+
+    "縦カーブ":"green",
+    "横カーブ":"limegreen",
+
+    "フォーク":"purple",
+    "スプリット":"violet",
+
+    "チェンジアップ":"orange",
+
+    "シンカー":"gold",
+    "シュート":"yellow",
+
+    "ナックルカーブ":"darkgreen",
+    "パワーカーブ":"forestgreen",
+
+    "スラーブ":"cyan",
+
+    "ナックル":"gray"
+};
+function createPieChartData(){
+
+    const count = {};
+
+    pitches.forEach(p=>{
+        count[p.type] = (count[p.type] || 0) + 1;
+    });
+
+    const chartData = [];
+
+    for(let type in count){
+        chartData.push({
+            pitch:type,
+            count:count[type]
+        });
+    }
+
+    return chartData;
+}
+
+function drawPieChart(){
+
+    const pieCanvas =
+        document.getElementById("pieChart");
+
+    const pieCtx =
+        pieCanvas.getContext("2d");
+
+    pieCtx.clearRect(0,0,300,300);
+
+    const count = {};
+
+    pitches.forEach(p=>{
+        count[p.type] =
+            (count[p.type] || 0) + 1;
+    });
+
+    const total = pitches.length;
+
+    if(total === 0) return;
+
+    let startAngle = 0;
+
+    for(let type in count){
+
+        const slice =
+            (count[type] / total) *
+            Math.PI * 2;
+
+        pieCtx.beginPath();
+        pieCtx.moveTo(150,150);
+
+        pieCtx.arc(
+            150,
+            150,
+            120,
+            startAngle,
+            startAngle + slice
+        );
+
+        pieCtx.closePath();
+
+        pieCtx.fillStyle =
+            colors[type];
+
+        pieCtx.fill();
+
+        startAngle += slice;
+    }
+}
+
+function drawZone(){
+
+    ctx.clearRect(0,0,500,500);
+
+    // ストライクゾーン
+    ctx.strokeStyle="black";
+    ctx.lineWidth=3;
+    ctx.strokeRect(150,100,200,300);
+
+    // 9分割
+    for(let i=1;i<3;i++){
+        ctx.beginPath();
+        ctx.moveTo(150+i*66.6,100);
+        ctx.lineTo(150+i*66.6,400);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(150,100+i*100);
+        ctx.lineTo(350,100+i*100);
+        ctx.stroke();
+    }
+
+    // 投球表示
+    pitches.forEach(p=>{
+
+        ctx.fillStyle = colors[p.type];
+
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,6,0,Math.PI*2);
+        ctx.fill();
+    });
+
+}
+
+function drawAverage(){
+
+    const types = [...new Set(pitches.map(p=>p.type))];
+
+    types.forEach(type=>{
+
+        const group = pitches.filter(p=>p.type===type);
+
+        let avgX =
+            group.reduce((a,b)=>a+b.x,0)/group.length;
+
+        let avgY =
+            group.reduce((a,b)=>a+b.y,0)/group.length;
+
+        ctx.fillStyle = colors[type];
+
+        ctx.beginPath();
+        ctx.arc(avgX,avgY,12,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.strokeStyle="black";
+        ctx.stroke();
+    });
+}
+
+canvas.addEventListener("click",(e)=>{
+
+    const rect = canvas.getBoundingClientRect();
+
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+   const type = selectedPitch;
+
+    pitches.push({
+        x:x,
+        y:y,
+        type:type
+    });
+
+    drawZone();
+    updateStats();
+});
+
+
+function updateStats(){
+
+    const count = {};
+
+    pitches.forEach(p=>{
+        count[p.type] = (count[p.type] || 0)+1;
+    });
+
+    const total = pitches.length;
+
+    let html = `
+    <h2>総投球数 : ${total}球</h2>
+    <hr>
+    `;
+
+    for(let key in count){
+
+        const rate =
+            ((count[key] / total) * 100).toFixed(1);
+
+        html += `
+        <div style="color:${colors[key]}">
+            ${key} : ${count[key]}球 (${rate}%)
+        </div>`;
+    }
+
+    document.getElementById("stats").innerHTML = html;
+    drawPieChart();
+}
+
+function clearMap(){
+
+    pitches.length=0;
+
+    document.querySelector(".pitchBtn")
+.classList.add("selected");
+
+    drawZone();
+    updateStats();
+}
+
+drawZone();
+
+</script>
+
+</body>
+</html>
