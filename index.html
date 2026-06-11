@@ -353,6 +353,31 @@ canvas.addEventListener("click",(e)=>{
 
     drawZone();
     updateStats();
+    function getZone(x,y){
+
+    const left = 150;
+    const top = 100;
+
+    const zoneWidth = 200;
+    const zoneHeight = 300;
+
+    if(
+        x < left ||
+        x > left + zoneWidth ||
+        y < top ||
+        y > top + zoneHeight
+    ){
+        return "ボール";
+    }
+
+    const col =
+        Math.floor((x - left) / (zoneWidth / 3));
+
+    const row =
+        Math.floor((y - top) / (zoneHeight / 3));
+
+    return row * 3 + col;
+}
 });
 
 
