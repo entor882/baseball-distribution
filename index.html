@@ -96,6 +96,9 @@ button{
 <h3>球種別投球数</h3>
 <div id="stats"></div>
 
+<h3>コース別割合</h3>
+<div id="zoneStats"></div>
+
 <h3>投球割合</h3>
 <canvas id="pieChart" width="300" height="300"></canvas>
 
@@ -357,8 +360,10 @@ canvas.addEventListener("click",(e)=>{
 
     const left = 150;
     const top = 100;
-
-    const zoneWidth = 200;
+    
+}
+});
+const zoneWidth = 200;
     const zoneHeight = 300;
 
     if(
@@ -377,8 +382,6 @@ canvas.addEventListener("click",(e)=>{
         Math.floor((y - top) / (zoneHeight / 3));
 
     return row * 3 + col;
-}
-});
 
 
 function updateStats(){
@@ -409,6 +412,11 @@ function updateStats(){
 
     document.getElementById("stats").innerHTML = html;
     drawPieChart();
+    document.getElementById("stats").innerHTML = html;
+drawPieChart();
+
+updateZoneStats();
+
 }
 
 function clearMap(){
