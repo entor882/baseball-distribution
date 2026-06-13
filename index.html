@@ -340,6 +340,31 @@ function drawAverage(){
 }
 
 canvas.addEventListener("click",(e)=>{
+    function getZone(x,y){
+
+    const left = 150;
+    const top = 100;
+
+    const zoneWidth = 200;
+    const zoneHeight = 300;
+
+    if(
+        x < left ||
+        x > left + zoneWidth ||
+        y < top ||
+        y > top + zoneHeight
+    ){
+        return "ボール";
+    }
+
+    const col =
+        Math.floor((x - left)/(zoneWidth/3));
+
+    const row =
+        Math.floor((y - top)/(zoneHeight/3));
+
+    return row * 3 + col;
+}
 
     const rect = canvas.getBoundingClientRect();
 
@@ -356,32 +381,7 @@ canvas.addEventListener("click",(e)=>{
 
     drawZone();
     updateStats();
-    function getZone(x,y){
-
-    const left = 150;
-    const top = 100;
     
-}
-});
-const zoneWidth = 200;
-    const zoneHeight = 300;
-
-    if(
-        x < left ||
-        x > left + zoneWidth ||
-        y < top ||
-        y > top + zoneHeight
-    ){
-        return "ボール";
-    }
-
-    const col =
-        Math.floor((x - left) / (zoneWidth / 3));
-
-    const row =
-        Math.floor((y - top) / (zoneHeight / 3));
-
-    return row * 3 + col;
 
 
 function updateStats(){
@@ -410,11 +410,8 @@ function updateStats(){
         </div>`;
     }
 
-    document.getElementById("stats").innerHTML = html;
-    drawPieChart();
-    document.getElementById("stats").innerHTML = html;
+   document.getElementById("stats").innerHTML = html;
 drawPieChart();
-
 updateZoneStats();
 
 }
@@ -428,6 +425,64 @@ function clearMap(){
 
     drawZone();
     updateStats();
+    function updateZoneStats(){
+
+    const zones = Array(9).fill(0);
+
+    pitches.forEach(p=>{
+
+        const zone = getZone(p.x,p.y);
+
+        if(zone !== "ボール"){
+            zones[zone]++;
+        }
+
+    });
+
+    const total =
+        zones.reduce((a,b)=>a+b,0);
+
+    let html = "";
+
+    if(total === 0){
+
+        html = "まだ投球がありません";
+
+    }else{
+
+        html += "<table border='1' style='margin:auto;'>";
+
+        for(let row=0; row<3; row++){
+
+            html += "<tr>";
+
+            for(let col=0; col<3; col++){
+
+                const idx = row*3+col;
+
+                const rate =
+                ((zones[idx]/total)*100)
+                .toFixed(1);
+
+                html += `
+                <td style="
+                    width:80px;
+                    height:60px;
+                    text-align:center;
+                ">
+                ${rate}%
+                </td>`;
+            }
+
+            html += "</tr>";
+        }
+
+        html += "</table>";
+    }
+
+    document.getElementById("zoneStats")
+    .innerHTML = html;
+}
 }
 
 drawZone();
